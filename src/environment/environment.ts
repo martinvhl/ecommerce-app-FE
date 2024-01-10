@@ -1,3 +1,6 @@
 export const environment = {
-    getAllProductsUrl: 'http://localhost:8080/api/products'
+    baseProductAPIUrl: 'http://localhost:8080/api/products',
+    findByCategory: '/search/findByCategoryId?id=',
+    searchByNameOrDesc: '/search/findProductsByNameOrDesc?searchText=',
+    baseProductCategoriesUrl: 'http://localhost:8080/api/product-category'
 }

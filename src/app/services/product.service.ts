@@ -1,23 +1,60 @@
-import { Injectable } from '@angular/core';
-import { environment } from 'src/environment/environment';
-import { Product } from '../model/product.model';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Injectable } from '@angular/core';
+import { Observable, Subject, map } from 'rxjs';
+import { environment } from 'src/environment/environment';
+import { ProductCategory } from '../model/product-category.model';
+import { Product } from '../model/product.model';
 
-//_embedded - tvar odpovědi našeho REST API - implicitně vytvořené Spring Data REST - mohli bychom si na BE REST controller vytvořit sami, pak by response body bylo naše custom a to by se tady předělalo
-interface GetResponse {
-    _embedded: {
-        products: Product[];
-    }
+//_embedded - vychází z tvaru odpovědi našeho REST API - implicitně vytvořené Spring Data REST - mohli bychom si na BE REST controller vytvořit sami, pak by response body bylo naše custom a to by se tady předělalo
+//vedle _embedded s daty zde lze nalézt také page s informacemi o db (nastavená velikost - size, totalElements, totalPages, number - číslo stránky) a také _links s HATEOAS linky - první, předchozí, současná,následující a poslední stránka
+interface GetProductResponse {
+  _embedded: {
+    products: Product[];
+  };
 }
 
-@Injectable({providedIn: 'root'})
+interface GetProductCategoryResponse {
+  _embedded: {
+    productCategory: ProductCategory[];
+  };
+}
+
+@Injectable({ providedIn: 'root' })
 export class ProductService {
-    private getProductsUrl = environment.getAllProductsUrl;
+  activeCategory: Subject<string> = new Subject<string>();
+  activeCategoryId!: number;
 
-    constructor(private httpClient: HttpClient) {}
+  constructor(private httpClient: HttpClient) {}
 
-    getProductList(): Observable<Product[]> {
-        return this.httpClient.get<GetResponse>(this.getProductsUrl).pipe(map(response => response._embedded.products));
-    }
+  getProduct(productId: number): Observable<Product> {
+    const customUrl = `${environment.baseProductAPIUrl}/${productId}`;
+    return this.httpClient.get<Product>(customUrl); // auto-unwrap JSON objektu - built-in feature Spring Data REST, no config required
+  }
+
+  getProductList(categoryId: number): Observable<Product[]> {
+    this.activeCategoryId = categoryId;
+    const customUrl = `${environment.baseProductAPIUrl}${environment.findByCategory}${categoryId}`;
+    return this.getProducts(customUrl);
+  }
+
+  searchForProducts(keyword: string): Observable<Product[]> {
+    const customUrl = `${environment.baseProductAPIUrl}${environment.searchByNameOrDesc}${keyword}`;
+    return this.getProducts(customUrl);
+  }
+
+  getProductCategories(): Observable<ProductCategory[]> {
+    return this.httpClient
+      .get<GetProductCategoryResponse>(environment.baseProductCategoriesUrl)
+      .pipe(map((response) => response._embedded.productCategory));
+  }
+
+  sendCategory(name: string) {
+    this.activeCategory.next(name);
+  }
+
+  private getProducts(customUrl: string): Observable<Product[]> {
+    return this.httpClient
+      .get<GetProductResponse>(customUrl)
+      .pipe(map((response) => response._embedded.products));
+  }
 }
