@@ -11,6 +11,12 @@ interface GetProductResponse {
   _embedded: {
     products: Product[];
   };
+  page: {
+    size: number;
+    totalElements: number; //gran total of all eles
+    totalPages: number;
+    number: number; //currPageNum
+  };
 }
 
 interface GetProductCategoryResponse {
@@ -31,6 +37,17 @@ export class ProductService {
     return this.httpClient.get<Product>(customUrl); // auto-unwrap JSON objektu - built-in feature Spring Data REST, no config required
   }
 
+  getProductListPaginate(
+    categoryId: number,
+    thePage: number,
+    thePageSize: number
+  ): Observable<GetProductResponse> {
+    this.activeCategoryId = categoryId;
+    const customUrl = `${environment.baseProductAPIUrl}${environment.findByCategory}${categoryId}&size=${thePageSize}&page=${thePage}`;
+    console.log(customUrl);
+    return this.httpClient.get<GetProductResponse>(customUrl);
+  }
+
   getProductList(categoryId: number): Observable<Product[]> {
     this.activeCategoryId = categoryId;
     const customUrl = `${environment.baseProductAPIUrl}${environment.findByCategory}${categoryId}`;
@@ -40,6 +57,11 @@ export class ProductService {
   searchForProducts(keyword: string): Observable<Product[]> {
     const customUrl = `${environment.baseProductAPIUrl}${environment.searchByNameOrDesc}${keyword}`;
     return this.getProducts(customUrl);
+  }
+
+  searchForProductsPaginate(thePage: number, thePageSize: number, keyword: string): Observable<GetProductResponse> {
+    const customUrl = `${environment.baseProductAPIUrl}${environment.searchByNameOrDesc}${keyword}&page=${thePage}&size=${thePageSize}`;
+    return this.httpClient.get<GetProductResponse>(customUrl);
   }
 
   getProductCategories(): Observable<ProductCategory[]> {

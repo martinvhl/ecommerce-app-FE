@@ -18,7 +18,7 @@
               <h1>{{ product.name }}</h1>
             </a>
             <div class="price">{{ product.unitPrice | currency : "USD" }}</div>
-            <a href="#" class="btn primary-btn">Add to cart</a>
+            <button class="btn btn-primary btn-small" (click)="onAddToCartHandle(product)">Add to cart</button> <!-- TODO: cart-status handler -->
           </div>
         </div>
 
@@ -30,6 +30,40 @@
         >
           <!-- role - for accessibility reasons - f.e. screen readers for visually impaired; use of ? - safe navigation operator - for null/undefined cases -->
           <h4>No products were found!</h4>
+        </div>
+      </div>
+      <!-- Added Ng-Bootstrap pagination support + we can add some sorting support on our own as well-->
+      <div class="footer-pagination">
+        <div class="row">
+          <div class="col-md-6"></div>
+          <div class="col-md-6">
+            <div class="row">
+              <div class="col-md-9" style="padding-left: 25%">
+                <ngb-pagination
+                  [(page)]="thePageNumber"
+                  [pageSize]="thePageSize"
+                  [collectionSize]="theTotalElements"
+                  [maxSize]="5"
+                  [boundaryLinks]="true"
+                  (pageChange)="this.listProducts()"
+                >
+                </ngb-pagination>
+              </div>
+              <div class="col-md-3 mt-2" style="text-align: right;">
+                <span class="mr-2">Page Size </span>
+                <select
+                  #myPageSelect
+                  (change)="updatePageSize(+myPageSelect.value)"
+                >
+                  <option>2</option>
+                  <option selected=true>5</option>
+                  <option>10</option>
+                  <option>20</option>
+                  <option>50</option>
+                </select>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
