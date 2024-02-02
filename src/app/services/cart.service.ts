@@ -1,14 +1,15 @@
 import { Injectable } from '@angular/core';
 import { CartItem } from '../model/cart-item.model';
-import { Subject } from 'rxjs';
+import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private cartItems: CartItem[] = [];
 
   //publish events to all subscriber (Publisher-Subscriber pattern)
-  totalPrice: Subject<number> = new Subject<number>();
-  totalQuantity: Subject<number> = new Subject<number>();
+  //aktualizace - Subject vyměníme za ReplaySubject, který pak každému subscriberovi pošle tolik předchozích hodnot, jaká je velikost bufferu (takže subscriber dostane předchozí hodnoty odeslané ještě předtím, než se subscribnul - př. CheckoutComponent vzniká až poté, co jsou položky v košíku a změna publishnutá) - jako BehaviourSubject, ale ten odesílá jen poslední hodnotu --->>> pro nás ještě lepší řešení, chceme jen celkový total price/quantity, nepotřebujeme mezivýsledky
+  totalPrice: Subject<number> = new BehaviorSubject<number>(0);
+  totalQuantity: Subject<number> = new BehaviorSubject<number>(0);
 
   addToCart(theCartItem: CartItem) {
     //check if we already have the item in the cart
@@ -95,5 +96,8 @@ export class CartService {
 
   get getCartItems() {
     return this.cartItems;
+  }
+  set setCartItems(cartItems: CartItem[]) {
+    this.cartItems = cartItems;
   }
 }
