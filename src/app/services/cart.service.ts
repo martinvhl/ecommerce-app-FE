@@ -5,11 +5,20 @@ import { BehaviorSubject, ReplaySubject, Subject } from 'rxjs';
 @Injectable({ providedIn: 'root' })
 export class CartService {
   private cartItems: CartItem[] = [];
+  private storage: Storage = sessionStorage;
 
   //publish events to all subscriber (Publisher-Subscriber pattern)
   //aktualizace - Subject vyměníme za ReplaySubject, který pak každému subscriberovi pošle tolik předchozích hodnot, jaká je velikost bufferu (takže subscriber dostane předchozí hodnoty odeslané ještě předtím, než se subscribnul - př. CheckoutComponent vzniká až poté, co jsou položky v košíku a změna publishnutá) - jako BehaviourSubject, ale ten odesílá jen poslední hodnotu --->>> pro nás ještě lepší řešení, chceme jen celkový total price/quantity, nepotřebujeme mezivýsledky
   totalPrice: Subject<number> = new BehaviorSubject<number>(0);
   totalQuantity: Subject<number> = new BehaviorSubject<number>(0);
+
+  constructor() {
+    let data = this.storage.getItem('cartItems');
+    if (data != null) {
+      this.cartItems = JSON.parse(data);
+      this.computeCartTotals();
+    }
+  }
 
   addToCart(theCartItem: CartItem) {
     //check if we already have the item in the cart
@@ -69,12 +78,14 @@ export class CartService {
       totalQuantityValue += currentCartItem.quantity;
     }
 
+    
     //publish the new values -> all subscribers will receive the new data
     this.totalPrice.next(totalPriceValue);
     this.totalQuantity.next(totalQuantityValue);
-
+    
     //log cart data for debugging purposes
     this.logCartData(totalPriceValue, totalQuantityValue);
+    this.persistCartItems();
   }
 
   logCartData(totalPriceValue: number, totalQuantityValue: number) {
@@ -92,6 +103,10 @@ export class CartService {
       )}` //na 2 desetinná místa
     );
     console.log('--------------------------------------------');
+  }
+
+  persistCartItems() {
+    this.storage.setItem('cartItems', JSON.stringify(this.cartItems));
   }
 
   get getCartItems() {

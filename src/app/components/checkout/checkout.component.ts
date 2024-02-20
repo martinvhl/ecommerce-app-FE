@@ -36,6 +36,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   countries: Country[] = [];
   shippingAddressStates: State[] = [];
   billingAddressStates: State[] = [];
+  storage: Storage = sessionStorage;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -76,7 +77,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           Validators.minLength(2),
           CustomFormValidators.notOnlyWhitespace,
         ]),
-        email: new FormControl('', [
+        email: new FormControl(JSON.parse(this.storage.getItem('userEmail')!), [
           // netřeba použít notOnlyWhitespace, řeší to pattern
           Validators.required,
           Validators.pattern(
@@ -211,7 +212,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.checkoutFormGroup.markAllAsTouched(); // touching all fields triggers the display of the error messages
       return; //error, nevypisovat, nevytvářet purchase objekt a ukončit
     }
-    //TODO - create purchase DTO, collect required data from form, add to purchase dto, use checkoutService to call api
     
     //set up order
     let order = new Order();
