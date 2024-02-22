@@ -395,8 +395,8 @@
             </div>
           </div>
         </div>
-        <!-- Credit Card -->
-        <div class="form-area">
+        <!-- Credit Card - removed and replaced by Stripe Elements in iframe - dříve projekt využíval authorize.net, který toto používal -->
+        <!-- <div class="form-area">
           <h3>Credit card</h3>
           <div formGroupName="creditCard">
             <div class="row">
@@ -535,6 +535,21 @@
               </div>
             </div>
           </div>
+        </div> -->
+
+        <!-- Stripe Elements Credit card section -->
+        <div formGroupName="creditCard" class="form-area">
+          <h3>Credit or Debit Card</h3>
+
+          <div id="card-element">
+            <!-- Stripe element will be added here -->
+          </div>
+
+          <!-- Div used to display form errors -->
+          <div id="card-errors" class="displayError.textContent!=='': 'alert alert-danger mt-1'">
+
+          </div>
+
         </div>
 
         <!-- Order Details -->
@@ -548,7 +563,7 @@
 
         <!-- Submit button -->
         <div class="text-center">
-          <button type="submit" class="btn btn-info">Purchase</button>
+          <button type="submit" class="btn btn-info" [disabled]="this.isDisabled">Purchase</button>
           <button type="button" [routerLink]="'/cart-details'" class="btn btn-secondary">Back</button>
         </div>
       </form>

@@ -3,7 +3,7 @@ import { Inject, Injectable } from "@angular/core";
 import { OKTA_AUTH } from "@okta/okta-angular";
 import { OktaAuth } from "@okta/okta-auth-js";
 import { Observable, from, lastValueFrom } from "rxjs";
-import { environment } from "src/environment/environment";
+import { environment } from "src/environments/environment";
 
 @Injectable({
     providedIn: 'root'

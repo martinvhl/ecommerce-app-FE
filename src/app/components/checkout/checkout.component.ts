@@ -11,12 +11,14 @@ import { take } from 'rxjs/operators';
 import { Country } from 'src/app/model/country.model';
 import { OrderItem } from 'src/app/model/order-item.model';
 import { Order } from 'src/app/model/order.model';
+import { PaymentInfo } from 'src/app/model/payment-info';
 import { Purchase } from 'src/app/model/purchase.model';
 import { State } from 'src/app/model/state.model';
 import { CartService } from 'src/app/services/cart.service';
 import { CheckoutService } from 'src/app/services/checkout.service';
 import { CustomFormService } from 'src/app/services/form.service';
 import { CustomFormValidators } from 'src/app/validators/form.validator';
+import { environment } from 'src/environments/environment';
 
 @Component({
   selector: 'app-checkout',
@@ -29,14 +31,23 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   totalQuantity: number = 0;
   totalPriceSub: Subscription | undefined;
   totalQuantitySub: Subscription | undefined;
-  ccmSub: Subscription | undefined;
-  ccySub: Subscription | undefined;
+  //ccmSub: Subscription | undefined;
+  //ccySub: Subscription | undefined;
   creditCardYears: number[] = [];
   creditCardMonths: number[] = [];
   countries: Country[] = [];
   shippingAddressStates: State[] = [];
   billingAddressStates: State[] = [];
+
   storage: Storage = sessionStorage;
+
+  //initialize Stripe API
+  stripe = Stripe(environment.stripePublishableKey); // Stripe jsme  v typings deklarovali jako any, IDE nebude znát metody -> musíme je brát z dokumentace
+  paymentInfo: PaymentInfo = new PaymentInfo();
+  cardElement: any;
+  displayError: any = "";
+
+  isDisabled: boolean = false;
 
   constructor(
     private formBuilder: FormBuilder,
@@ -47,7 +58,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    //subscribe and populate credit card months;
+/*     //subscribe and populate credit card months;
     this.ccmSub = this.formService
       .getCreditCardMonths(new Date().getMonth() + 1)
       .subscribe((data) => (this.creditCardMonths = data));
@@ -55,7 +66,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     //subscribe and populate credit card years
     this.ccySub = this.formService
       .getCreditCardYears()
-      .subscribe((data) => (this.creditCardYears = data));
+      .subscribe((data) => (this.creditCardYears = data)); */
 
     this.totalPriceSub = this.cartService.totalPrice.subscribe(
       (data) => (this.totalPrice = data)
@@ -124,8 +135,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           CustomFormValidators.notOnlyWhitespace,
         ]),
       }),
-      creditCard: this.formBuilder.group({
-        cardType: new FormControl('', [Validators.required]),
+       creditCard: this.formBuilder.group({
+/*         cardType: new FormControl('', [Validators.required]),
         nameOnCard: new FormControl('', [
           Validators.required,
           Validators.minLength(2),
@@ -140,7 +151,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           Validators.pattern('^[0-9]{3}$'),
         ]),
         expirationMonth: new FormControl(this.creditCardMonths[0], [Validators.required]),
-        expirationYear: new FormControl(this.creditCardYears[0], [Validators.required])
+        expirationYear: new FormControl(this.creditCardYears[0], [Validators.required]) */
       }),
     });
 
@@ -156,6 +167,32 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       .subscribe((data) => {
         this.countries = data;
       });
+
+    //set up Stripe form using elements
+    this.setupStripePaymentForm();
+  }
+
+  private setupStripePaymentForm() {
+    //get a handle to stripe elements
+    const elements = this.stripe.elements();
+
+    //create a card element + hide postal code field -- platební metoda card je dána Stripe API - stejně jako paymentmethod na BE
+    this.cardElement = elements.create('card', { hidePostalCode: true });
+
+    //add an instance of card UI component to the 'card-element' div - mount  = insert/inject, tak nějak
+    this.cardElement.mount('#card-element');
+
+    //Add event binding for the 'change' event on the card element
+    this.cardElement.on('change', (event: any) => {
+      //get a handle to card-errors element
+      this.displayError = document.getElementById('card-errors');
+      if (event.complete) {
+        this.displayError.textContent = '';
+      } else if (event.error) {
+        //show validation error message to customer
+        this.displayError.textContent = event.error.message; //TODO reset error message po změně zadávaného čísla
+      }
+    })
   }
 
   copyShippingAddressToBillingAddress(event: Event) {
@@ -229,9 +266,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     //populate purchase with customer data
     purchase.customer = this.checkoutFormGroup.controls['customer'].value;
 
+    //compute payment info - price to lowest currency denominator etc. - Stripe API shit
+    this.paymentInfo.amount = Math.round(this.totalPrice * 100); //preventivní opatření v případě, že by JS uložil nějaké číslo jako X.9999999999999
+    this.paymentInfo.currency = 'USD';
+    this.paymentInfo.receiptEmail = purchase.customer.email;
+
     //populate purchase with shipping address
     purchase.shippingAddress = this.checkoutFormGroup.controls['shippingAddress'].value;
-    const shippingState: State = JSON.parse(
+    const shippingState: State = JSON.parse( // při opětovném odeslání formuláře (př. po chybě) hlásí chybu!!! - pravděpodobně zůstává value na komponentě vyplněné, ale v ts se vynuluje
       JSON.stringify(purchase.shippingAddress.state)
     );
     const shippingCountry: Country = JSON.parse(
@@ -251,8 +293,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     purchase.billingAddress.state = billingState.name;
     purchase.billingAddress.country = billingCountry.name;
 
-    //call REST API via the CheckoutService
-    this.checkoutService.placeOrder(purchase).subscribe({
+    //call REST API via the CheckoutService - replaced by Stripe call
+    /* this.checkoutService.placeOrder(purchase).subscribe({
       next: (response) => {
         alert(`Your order has been received. \nOrder tracking number: ${response.orderTrackingNumber}`);
         //reset cart
@@ -261,7 +303,60 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       error: (err) => {
         alert(`There was an error: ${err.message}`);
       },
-    });
+    });  */
+
+    //if form is valid, then ->create payment intent, confirm card payment place order
+    if (!this.checkoutFormGroup.invalid && this.displayError.textContent === "") {
+      //zablokovat purchase button a zabránit vícenásobnému odeslání
+      this.isDisabled = true;
+      //metoda create payment info v service -> vrací payment intent observable s daty ze Stripe API získanými přes BE, obsahuje client_secret kód
+      this.checkoutService.createPaymentIntent(this.paymentInfo).subscribe((paymentIntentResponse) => {
+        this.stripe.confirmCardPayment(paymentIntentResponse.client_secret,
+          {
+            payment_method: {
+              card: this.cardElement,
+              billing_details: {
+                email: purchase.customer.email,
+                name: `${purchase.customer.firstName} ${purchase.customer.lastName}`,
+                address: {
+                  line1: purchase.billingAddress.street,
+                  city: purchase.billingAddress.city,
+                  state: purchase.billingAddress.state,
+                  postal_code: purchase.billingAddress.zipCode,
+                  country: this.billingAddressCountry?.value.code,
+                }
+              }
+            }
+          }, { handleActions: false }).then((result: any) => { // result už přišel ze Stripe API
+            if (result.error) {
+              //inform the customer there was an error
+              alert(`There was an error: ${result.error.message}`);
+              this.isDisabled = false;
+            } else {
+              //vše v pořádku, volej REST API přes checkoutService
+              this.checkoutService.placeOrder(purchase).subscribe({
+                next: (response) => {
+                  alert(`Your order has been received. \nOrder tracking number: ${response.orderTrackingNumber}`);
+                  //reset cart
+                  this.resetCart();
+                },
+                error: (err) => {
+                  //tohle už je ale chyba s naším serverem - neuložená objednávka nebo tak něco
+                  alert(`There was an error: ${err.message}`);
+                  this.isDisabled = false;
+                },
+                complete: () => {
+                  this.isDisabled = false;
+                }
+              });
+            }
+          });
+      });
+    } else {
+      // existuje chyba ve vyplnění formuláře -> upozorníme na ni uživatele
+      this.checkoutFormGroup.markAllAsTouched();
+      return;
+    }
 
     console.log(this.checkoutFormGroup.get('customer')?.value);
     console.log(this.checkoutFormGroup.get('shippingAddress')?.value);
@@ -275,6 +370,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.cartService.setCartItems = [];
     this.cartService.totalPrice.next(0);
     this.cartService.totalQuantity.next(0);
+    //empty the session storage using persistCartItems() - cartItems[] jsou prázdné
+    this.cartService.persistCartItems();
+
     
     //reset the form
     this.checkoutFormGroup.reset();
@@ -342,12 +440,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    if (this.ccmSub) {
+    /* if (this.ccmSub) {
       this.ccmSub.unsubscribe();
     }
     if (this.ccySub) {
       this.ccySub.unsubscribe();
-    }
+    } */
     if (this.totalPriceSub) {
       this.totalPriceSub.unsubscribe();
     }

@@ -3,7 +3,7 @@ import { of } from 'rxjs';
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Country } from '../model/country.model';
-import { environment } from 'src/environment/environment';
+import { environment } from 'src/environments/environment';
 import { map, tap } from 'rxjs/operators';
 import { State } from '../model/state.model';
 

@@ -2,7 +2,7 @@ import { HttpClient } from "@angular/common/http";
 import { Injectable } from "@angular/core";
 import { Observable } from "rxjs";
 import { OrderHistory } from "../model/order-history.model";
-import { environment } from "src/environment/environment";
+import { environment } from "src/environments/environment";
 
 interface GetResponseOrderHistory {
     _embedded: {
